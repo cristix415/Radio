@@ -8,6 +8,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 
@@ -46,44 +47,54 @@ public class MainActivity extends AppCompatActivity {
     static ExampleService mService;
     boolean mBound = false;
     private ActivityMainBinding binding;
-    public static MaterialButton button;
+    public static MaterialButton prevButton;
+    public static MaterialButton currentButton;
+    Boolean nou = false;
+    public static boolean stopPressed = false;
+    BroadcastReceiver broadcastReceiverPlayerPrepared = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Boolean stop = intent.getBooleanExtra("stop",false);
+            Log.e("tttttttttttttttttttt", String.valueOf(stop));
+            if (stop)
+                 nou = true;
 
+            currentButton.setIcon(ContextCompat.getDrawable(context, R.drawable.ic_pause));
+        }
+    };
 
     public void startService(View v) {
         SetButtonIconPlay();
+        prevButton = currentButton;
+        currentButton = (MaterialButton) v;
+        if (stopPressed)
+        Log.e("YES", "start stopPressed");
+        else
+            Log.e("NO", "start stopPressed");
 
-        button = (MaterialButton) v;
-        button.setIcon(ContextCompat.getDrawable(this, R.drawable.ic_pause));
-
-        //rulare prima daata
-        if (mService == null) {
-            Intent serviceIntent = new Intent(getApplicationContext(), ExampleService.class);
-            serviceIntent.putExtra("link", button.getTag().toString());
-            bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE);
-        }
         //click pe aceelasi post
-        if (mService != null && mService.getButton() == v) {
+        if (  !stopPressed &&  prevButton == currentButton) {
+            Log.e("ACELASI radioul", currentButton.getText().toString());
+
             mService.playPauseRadio();
+
             if (mService.isPlaying())
-                button.setIcon(ContextCompat.getDrawable(this, R.drawable.ic_play));
+                currentButton.setIcon(ContextCompat.getDrawable(this, R.drawable.ic_play));
             else
-                button.setIcon(ContextCompat.getDrawable(this, R.drawable.ic_pause));
-            mService.showNotification(false);
-        } else {
-            //post diferit
-            Log.e("1111111111111111", button.getText().toString());
-            if (mService != null) {
-                mService.setButton(button);
-                button.setIcon(ContextCompat.getDrawable(this, R.drawable.ic_pause));
-
-                mService.CreateAndPlayMediaPlayer(button.getTag().toString());
-
-          //      mService.showNotification(false);
-
-
-            }
-
+                currentButton.setIcon(ContextCompat.getDrawable(this, R.drawable.ic_pause));
         }
+
+        //if (stopPressed || prevButton == null || (prevButton != null && prevButton != currentButton)) {
+        else{
+            nou = false;
+            Log.e("PRIMA DATA sau DIFERIT", currentButton.getText().toString());
+            currentButton.setIcon(ContextCompat.getDrawable(this,R.drawable.ic_loading_foreground));
+            mService.setButton(currentButton);
+            //mService.CreateAndPlayMediaPlayer(currentButton.getTag().toString());
+            mService.Apasare(currentButton.getTag().toString());
+        }
+
+        Log.e("final metoda (buton apasat)", String.valueOf(stopPressed));
 
 
     }
@@ -125,7 +136,7 @@ public class MainActivity extends AppCompatActivity {
     /**
      * Defines callbacks for service binding, passed to bindService()
      */
-    private ServiceConnection connection = new ServiceConnection() {
+    public ServiceConnection connection = new ServiceConnection() {
 
         @Override
         public void onServiceConnected(ComponentName className, IBinder service) {
@@ -144,13 +155,16 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction("com.example.radiotest");
+        registerReceiver(broadcastReceiverPlayerPrepared, intentFilter);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
         // unregisterReceiver(airplaneModeChangeReceiver);
+        unregisterReceiver(broadcastReceiverPlayerPrepared);
     }
 
     @Override
@@ -158,7 +172,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
-
+        Intent serviceIntent = new Intent(getApplicationContext(), ExampleService.class);
+        bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE);
         //Context context = getApplicationContext();
         // Intent serviceIntent = new Intent(context, ExampleService.class);
 

@@ -18,7 +18,7 @@
         android:id="@+id/RadioAltFm"
         app:iconGravity="start"
         android:text="Radio ALT FM"
-         android:tag="http://asculta.radiocnm.ro:8002/live"
+         android:tag="@string/radioAltFM"
 
         android:onClick="startService"
         app:icon="@drawable/ic_play"
@@ -27,8 +27,7 @@
     <com.google.android.material.button.MaterialButton
         android:id="@+id/RadioVoceaCrestinilor"
         app:iconGravity="start"
-        android:tag="https://listen.radioking.com/radio/494884/stream/551902"
-
+        android:tag="@string/radioVoceaCrestinilor"
         android:text="Radio Vocea Crestinilor"
         android:onClick="startService"
         app:icon="@drawable/ic_play"

@@ -1,6 +1,9 @@
 package com.example.radiotest;
 
+import static com.example.radiotest.MainActivity.stopPressed;
+
 import android.animation.Animator;
+import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -9,24 +12,31 @@ import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaPlayer;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
 import android.net.Uri;
+import android.net.wifi.WifiManager;
+import android.nfc.Tag;
 import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
+import android.view.View;
 import android.widget.ImageView;
+import android.widget.RemoteViews;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.BitmapKt;
 import androidx.media.session.MediaButtonReceiver;
 
 import com.google.android.material.button.MaterialButton;
@@ -41,45 +51,20 @@ import java.util.Random;
 
 import cz.msebera.android.httpclient.Header;
 
-public class ExampleService extends Service {
+public class ExampleService extends Service implements MediaPlayer.OnPreparedListener {
     private final IBinder binder = new LocalBinder();
-
+    private static final String ACTION_PLAY = "com.example.action.PLAY";
     MaterialButton button;
     String artist;
     String title;
     MediaPlayer player = new MediaPlayer();
-    boolean playing;
+    WifiManager.WifiLock wifiLock;
 
     private NotificationCompat.Builder notificationBuilder;
     public static MediaSessionCompat mediaSession;
     private PlaybackStateCompat.Builder stateBuilder;
     private NotificationManager notificationManager;
-
-
-    @Override
-    public IBinder onBind(Intent intent) {
-        String link = intent.getStringExtra("link");
-
-
-        CreateAndPlayMediaPlayer(link);
-
-        CreateMediaSession();
-        showNotification(true);
-        //  player.start();
-        return binder;
-    }
-
-    @Override
-    public void onCreate() {
-        super.onCreate();
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        player.stop();
-    }
-
+    public static boolean pressedCancel = false;
 
     private void CreateMediaSession() {
         mediaSession = new MediaSessionCompat(this, "simpleplayer session");
@@ -96,22 +81,22 @@ public class ExampleService extends Service {
             public void onPlay() {
                 super.onPlay();
                 playPauseRadio();
-                synchronized (artist) {
-                    cauta();
-                }
+                //    cauta();
+                pressedCancel = false;
                 ;
-                showNotification(false);
+                //showNotification(false);
             }
 
             @Override
             public void onPause() {
                 super.onPause();
                 playPauseRadio();
+                pressedCancel = false;
                 synchronized (artist) {
-                    cauta();
+                    //cauta();
                 }
                 ;
-                showNotification(false);
+                //showNotification(false);
 
             }
 
@@ -119,17 +104,46 @@ public class ExampleService extends Service {
             public void onStop() {
                 super.onStop();
                 player.stop();
-
+                pressedCancel = true;
                 stopForeground(Service.STOP_FOREGROUND_REMOVE);
 
                 //  notificationManager.cancelAll();
-                Log.e("test", "caaaaanceeeeeeeeeel");
+                Log.e("canceeeeeeeeel", String.valueOf(pressedCancel));
+
 
             }
         });
         mediaSession.setActive(true);
 
     }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        CreateMediaSession();
+        return binder;
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        Log.e("onDestroy", " ");
+        if (player != null)
+            player.release();
+    }
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        super.onTaskRemoved(rootIntent);
+        wifiLock.release();
+        Log.e("onTaskRemoved", " ");
+        stopSelf();
+    }
+
+
 
 
     /**
@@ -138,13 +152,14 @@ public class ExampleService extends Service {
     public boolean isPlaying() {
         return !player.isPlaying();
     }
-
-    public MaterialButton getButton() {
-
-        return button;
+    public void playPauseRadio() {
+        if (player.isPlaying()) {
+            player.pause();
+        } else {
+            player.start();
+        }
+        showNotification(false);
     }
-
-
     public void setButton(MaterialButton button) {
         this.button = button;
     }
@@ -158,7 +173,7 @@ public class ExampleService extends Service {
                     try {
                         artist = responseString.getString("artist");
                         title = responseString.getString("title");
-                        showNotification(false);
+                        //   showNotification(false);
 
                     } catch (JSONException e) {
                         e.printStackTrace();
@@ -185,8 +200,8 @@ public class ExampleService extends Service {
     }
 
     public void showNotification(boolean firstRun) {
-        cauta();
-
+        //  cauta();
+       // Log.e("notificare", "incepuuuuut notificare");
         notificationBuilder = new NotificationCompat.Builder(this, "exampleServiceChannel");
         int icon;
 
@@ -202,7 +217,7 @@ public class ExampleService extends Service {
         //MediaButtonReceiver.handleIntent(mMediaSessionCompat, intent);
         NotificationCompat.Action playPauseAction = new NotificationCompat.Action(icon, "playPause",
                 MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_PLAY_PAUSE));
-        NotificationCompat.Action stopAction = new NotificationCompat.Action(R.drawable.ic_stop, "stop",
+        NotificationCompat.Action stopAction = new NotificationCompat.Action(R.drawable.ic_close, "stop",
                 MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_STOP));
 
         Intent gg = new Intent(this, MainActivity.class);
@@ -210,8 +225,8 @@ public class ExampleService extends Service {
         gg.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         PendingIntent contentPendingIntent = PendingIntent.getActivity(this,
                 2, gg, PendingIntent.FLAG_IMMUTABLE);
-        Bitmap bitmap = BitmapFactory.decodeResource(getResources(),
-                R.mipmap.munte);
+
+
         notificationBuilder
                 .setContentTitle(title + " - " + artist)
 
@@ -222,59 +237,65 @@ public class ExampleService extends Service {
                 .addAction(stopAction)
                 .setOnlyAlertOnce(true)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
+
                 .setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
 
                         .setMediaSession(mediaSession.getSessionToken())
 
-                        .setShowActionsInCompactView(0));
+                        .setShowCancelButton(true)
+                        .setShowActionsInCompactView(0))
+
+        //        .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
+        ;
+
 
         notificationManager = (NotificationManager) getSystemService((NOTIFICATION_SERVICE));
         Notification notif = notificationBuilder.build();
         notificationManager.notify(158, notif);
         startForeground(158, notif);
-        Log.e("notificare", "notificareeeeeeeeeeeeee");
+       // Log.e("notificare", "incepuuuuut notificare");
 
     }
 
 
-    public void playPauseRadio() {
-        if (player.isPlaying()) {
-            player.pause();
-        } else {
-            try {
-               player.start();
-            } catch ( Exception e) {
-                try {
-                    player.prepare();
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                }
-            }
-
-        }
-
-
-    }
-
-
-    void CreateAndPlayMediaPlayer(String link) {
-      //  player.stop();
+    public void Apasare(String link) {
         player.release();
-        player = MediaPlayer.create(this, Uri.parse(link));
-        player.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-            @Override
-            public void onPrepared(MediaPlayer mp) {
-                if (player.getDuration() != -1) {
-                    Log.e("notttt", "loading");
-                } else {
-                    Log.e("notttt", "complete");
-                    player.start();
-                    showNotification(false);
-                }
-            }
-        });
+        player = null;
+
+        Log.e("APASARE METODA", " ");
+        wifiLock = ((WifiManager) getSystemService(Context.WIFI_SERVICE))
+                .createWifiLock(WifiManager.WIFI_MODE_FULL, "mylock");
+
+        wifiLock.acquire();
+
+            player = new MediaPlayer();
+
+        // player = MediaPlayer.create(this, Uri.parse(link));
+        try {
+            player.setDataSource(this, Uri.parse(link));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        player.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
+        player.setOnPreparedListener(this);
+        Log.e("Prepare Async", " ");
+        Intent mainIntent = new Intent(this, MainActivity.class);
+       // sendBroadcast(mainIntent);
+        player.prepareAsync(); // prepare async to not block main thread
 
 
+    }
+
+    /**
+     * Called when MediaPlayer is ready
+     */
+    public void onPrepared(MediaPlayer player) {
+        Log.e("dupa Prepare Async", " ");
+        Intent intent1 = new Intent();
+        intent1.setAction("com.example.radiotest");
+        intent1.putExtra("stop", true);
+        sendBroadcast(intent1);
+        playPauseRadio();
     }
 
     public class LocalBinder extends Binder {
@@ -284,9 +305,5 @@ public class ExampleService extends Service {
         }
     }
 
-    @Override
-    public void onTaskRemoved(Intent rootIntent) {
-        super.onTaskRemoved(rootIntent);
-        stopSelf();
-    }
+
 }
