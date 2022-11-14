@@ -3,11 +3,7 @@
     <string name="action_settings">Settings</string>
     <!-- Strings used for fragments for navigation -->
 
-    <string name="next">Next</string>
-    <string name="previous">Previous</string>
 
-
-    <string name="channel_name">chanel</string>
     <string name="radioAltFM">http://asculta.radiocnm.ro:8002/live</string>
     <string name="radioVoceaCrestinilor">https://listen.radioking.com/radio/494884/stream/551902</string>
 </resources>
