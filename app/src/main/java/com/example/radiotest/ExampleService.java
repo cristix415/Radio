@@ -16,6 +16,8 @@ import android.os.PowerManager;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
+import android.widget.Button;
+
 import androidx.core.app.NotificationCompat;
 import androidx.media.session.MediaButtonReceiver;
 import com.google.android.material.button.MaterialButton;
@@ -27,9 +29,9 @@ import cz.msebera.android.httpclient.Header;
 
 public class ExampleService extends Service implements MediaPlayer.OnPreparedListener {
     private final IBinder binder = new LocalBinder();
-    MaterialButton button;
+    Button button;
     String artist;
-    String title;
+    String title="";
     MediaPlayer player = new MediaPlayer();
     WifiManager.WifiLock wifiLock;
 
@@ -48,7 +50,10 @@ public class ExampleService extends Service implements MediaPlayer.OnPreparedLis
             @Override
             public void onPlay() {
                 super.onPlay();
+                artist = button.getText().toString();
                 showNotification(R.drawable.ic_loading_foreground);
+        //        cauta();
+
                 PlayRadio(button.getTag().toString());
             }
 
@@ -58,6 +63,9 @@ public class ExampleService extends Service implements MediaPlayer.OnPreparedLis
                 player.stop();
                 player.release();
                 player = null;
+                artist = button.getText().toString();
+                title = "";
+         //       cauta();
                 showNotification(R.drawable.ic_play);
             }
 
@@ -79,11 +87,14 @@ public class ExampleService extends Service implements MediaPlayer.OnPreparedLis
 
     @Override
     public void onCreate() {
+
+
         super.onCreate();
     }
 
     @Override
     public void onDestroy() {
+        Log.e("destroy","destroy");
         super.onDestroy();
         if (player != null)
             player.release();
@@ -91,6 +102,7 @@ public class ExampleService extends Service implements MediaPlayer.OnPreparedLis
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
+        Log.e("removed","task removd");
         super.onTaskRemoved(rootIntent);
         wifiLock.release();
         stopSelf();
@@ -103,12 +115,13 @@ public class ExampleService extends Service implements MediaPlayer.OnPreparedLis
 
 
 
-    public void setButton(MaterialButton button) {
+    public void setButton(Button button) {
+        artist = button.getText().toString();
         this.button = button;
     }
 
-    private void cauta() {
-        if (button != null && button.getId() == R.id.RadioVoceaCrestinilor)
+    private void cautaa() {
+        if (button != null && button.getTag().toString() == "RadioVoceaCrestinilor")
             HttpUtils.get("current", null, new JsonHttpResponseHandler() {
                 @Override
                 public synchronized void onSuccess(int statusCode, Header[] headers, JSONObject responseString) {
@@ -116,7 +129,7 @@ public class ExampleService extends Service implements MediaPlayer.OnPreparedLis
                     try {
                         artist = responseString.getString("artist");
                         title = responseString.getString("title");
-                        //   showNotification(false);
+                        showNotification(R.drawable.ic_pause);
 
                     } catch (JSONException e) {
                         e.printStackTrace();
@@ -130,10 +143,6 @@ public class ExampleService extends Service implements MediaPlayer.OnPreparedLis
                     Log.e("aaaa", responseString);
                 }
             });
-        if (button != null && button.getId() == R.id.RadioAltFm) {
-            artist = "RADIO ALTFM";
-            title = "";
-        }
         if (button == null) {
             artist = "RADIO ";
             title = "";
@@ -201,6 +210,7 @@ public class ExampleService extends Service implements MediaPlayer.OnPreparedLis
 
         // player = MediaPlayer.create(this, Uri.parse(link));
         try {
+            Log.e("aaaa",link);
             player.setDataSource(this, Uri.parse(link));
         } catch (IOException e) {
             e.printStackTrace();

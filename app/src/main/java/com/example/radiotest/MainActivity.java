@@ -6,12 +6,21 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.res.ColorStateList;
+import android.content.res.Resources;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.support.v4.media.RatingCompat;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.ListView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
@@ -21,6 +30,7 @@ import com.google.android.material.button.MaterialButton;
 import com.loopj.android.http.JsonHttpResponseHandler;
 
 import org.json.JSONObject;
+import org.w3c.dom.Attr;
 
 import cz.msebera.android.httpclient.Header;
 
@@ -30,19 +40,27 @@ public class MainActivity extends AppCompatActivity {
     static ExampleService mService;
     boolean mBound = false;
     public static MaterialButton button;
+    // Array of strings...
+    ListView simpleList;
+    String radioList[] = {"Radio ALT FM", "Radio Vocea Crestinilor"};
+    String links[] = {"http://asculta.radiocnm.ro:8002/live", "https://listen.radioking.com/radio/494884/stream/551902"};
 
     BroadcastReceiver broadcastReceiverPlayerPrepared = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            button.setIcon(ContextCompat.getDrawable(context, R.drawable.ic_pause));
+            button.setIcon(ContextCompat.getDrawable(getApplicationContext(), R.drawable.ic_pause));
+
         }
     };
 
 
-    public void startService(View v) {
-        SetButtonIconPlay();
+    public void startServiciu(View v) {
+        // SetButtonIconPlay();
+        if ((button != null))
+            button.setIcon(ContextCompat.getDrawable(this, R.drawable.ic_play));
         //apasare pause
         if (button == v && mService.player != null) {
+            Log.e("apasare pause SERVICE", button.getText().toString());
             button.setIcon(ContextCompat.getDrawable(this, R.drawable.ic_play));
             mService.player.stop();
             mService.player.release();
@@ -51,6 +69,7 @@ public class MainActivity extends AppCompatActivity {
         }
         // apasare play
         else {
+        //    Log.e("apasare play SERVICE", button.getText().toString());
             button = (MaterialButton) v;
             button.setIcon(ContextCompat.getDrawable(this, R.drawable.ic_loading_foreground));
             mService.setButton(button);
@@ -63,7 +82,6 @@ public class MainActivity extends AppCompatActivity {
             mService.PlayRadio(button.getTag().toString());
         }
     }
-
 
 
     private void cauta() {
@@ -83,12 +101,12 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private void SetButtonIconPlay() {
+    /*private void SetButtonIconPlay() {
         MaterialButton altFMButton = findViewById(R.id.RadioAltFm);
         altFMButton.setIcon(ContextCompat.getDrawable(this, R.drawable.ic_play));
         MaterialButton voceaCrestinilorButton = findViewById(R.id.RadioVoceaCrestinilor);
         voceaCrestinilorButton.setIcon(ContextCompat.getDrawable(this, R.drawable.ic_play));
-    }
+    }*/
     /**
      * Defines callbacks for service binding, passed to bindService()
      */
@@ -125,10 +143,33 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        com.example.radiotest.databinding.ActivityMainBinding binding = ActivityMainBinding.inflate(getLayoutInflater());
+        ActivityMainBinding binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         Intent serviceIntent = new Intent(getApplicationContext(), ExampleService.class);
         bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE);
+
+        //   simpleList = (ListView)findViewById(R.id.simpleListView);
+        //CustomAdapter customAdapter = new CustomAdapter(getApplicationContext(), radioList, flags);
+        // simpleList.setAdapter(customAdapter);
+
+        for (int i = 0; i < 2; i++) {
+            button = new MaterialButton(this, null);
+            button.setIcon(ContextCompat.getDrawable(this, R.drawable.ic_play));
+            button.setText(radioList[i]);
+            button.setTag(links[i]);
+            button.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    startServiciu(v);
+                }
+            });
+
+            binding.getRoot().addView(button);
+        }
+        button = null;
+
+
+        // startForegroundService(serviceIntent);
     }
 
     @Override
